@@ -120,237 +120,168 @@
 
 %% DOCUMENT NAME HERE
 \begin{center}
-     \Large{\textbf{CS2107 Introduction to \\
-     				 Information Security}} \\
+     \Large{\textbf{CS2106 Introduction to \\
+     				 Operating Systems}} \\
 \end{center}
 AY24/25 Sem 2, github.com/keithxun
 
 
-\section{Alice Opens Browser and Visits URL}
+\section{Memory Management}
 
-\subsection{Phishing Attack: Social Engineering}
-Trick the user to visit a website which is a spoofed canvas login page
+\subsection{Memory Abstraction - Contigious Memory Allocation}
 \begin{itemize}
-\item Typo squatting: Attacker register domain names that are similar to legitimate domain names but with typo error.
-\item Subdomain Takeover: Users may be tricked into visiting these look-alike subdomains (*.attacker.com) instead of (*.com)
+\item Fixed partitioning: Internal fragmentation (small process wastes space), size need to be large enough to contain largest process
+\item Dynamic partitioning: External fragmentation (many holes), need to maintain more information in OS, first fit, best fit, worst fit, buddy system (s bit of B and C is a complement)
 \end{itemize}
 
-\subsection{Phishing Attack: SSL Bug}
-\includegraphics[width=\columnwidth]{SSL Bug.png}
-
-\subsection{Countermeasures}
+\subsection{Paging}
 \begin{itemize}
-	\item User training: Workshops, reminders
-	\item Blacklisting: Repositary site keeping lists of phising sites
+\item Logical address space divided into pages, physical memory divided into frames
+\item Page table maps logical page to physical frame
+\item Keep frame size as power of 2
+\item Physical frame size = logicial page size
+\item PA = (frame number) * (frame size) + offset
+\item Internal fragmentation (last page not full)
+\item Page table information stored in PCB
+\item 2 Memory accesses for each logical address
+\item TLB: Cache for page table, TLB hit - retrieve frame number, TLB miss - page table lookup, update TLB
+\item TLB is part of hardware context switch
+\item Protection: Access-bits, valid bit
+\item Page sharing: Copy-on-write, shared pages
 \end{itemize}
 
-\section{Attacker in the Same Local Network}
-
-\subsection{DNS Spoofing}
-DNS has no confidentiality, integrity, or authentication.
+\subsection{Segmentation}
 \begin{itemize}
-	\item Manipulate DNS response to redirect users to a fake website
-	\item Same cafe (Physical layer), On-path router (IP layer)
-	\item Capability: Attacker able to send fake response before the actual one
+\item Logical address space divided into segments, each segment has a name, base and limit
+\item LA = <segment number, offset>
+\item PA = (base from segment table) + (offset)
+\item Can grow/shrink and be protected/shared independently
+\item Can cause external fragmentation
 \end{itemize}
 
-\subsection{Countermeasures}
+\subsection{Segmentation with Paging}
+\includegraphics[width=\columnwidth]{Segmentation with Paging.png}
 \begin{itemize}
-	\item DNSSEC: Digital signature for DNS records for authenticity and integrity
-	\item DoH: DNS over HTTPS for confidentiality
-	\item DoT: DNS over TLS
-	\item DoQ: DNS over QUIC
+\item Segment table contains page table
+\item Page table contains frame number
+\item LA = <segment number, page number, offset>
+\item PA = (frame number from page table) + (offset)
 \end{itemize}
 
-\subsection{ARP Spoofing}
-ARP requests are broadcasted to all hosts in the same local network. Attacker can send fake ARP responses to trick the victim
-\includegraphics[width=\columnwidth]{ARP Poisoning.png}
+\subsection{Virtual Memory}
 \begin{itemize}
-	\item Attacker poisons the ARP tables so as to gain MITM access
-	\item Attack is present in the local network (Physical Layer) and able to send ARP responses
+\item Secondary storage >> RAM
+\item Memory resident bit in page table 
+\item Page fault: page not in memory, OS handles page fault, restart
+\item Temporal locality: recently used pages likely to be used again
+\item Spatial locality: pages near recently used pages likely to be used
+\item Demand paging: Starts with no memory resident page, only loads a page when page fault
+\item Fast startup time but appear sluggish at the start
 \end{itemize}
 
-\subsection{Countermeasures}
+\subsection{Page Table structures}
 \begin{itemize}
-	\item Static ARP entries: Manually configure the ARP table
-	\item Packet filtering: Only allow ARP requests from trusted hosts, block single MAC address associated to multiple IPs
-\end{itemize}	
-
-\subsection{DDOS: Smurf Attack}
-\includegraphics[width=\columnwidth]{Smurf Attack.png}
-
-\subsection{DDOS: Amplification Attack}
-\includegraphics[width=\columnwidth]{Amplification Attack.png}
-
-\subsection{Countermeasures}
-\begin{itemize}
-	\item configure firewalls to block incoming ICMP Echo requests packets directed at broadcast addresses
-	\item Redundant servers, rate limiting, etc
-	\item Load balancing for amplification attack
+\item Direct paging: All entries in a single table, page table size = $2^n$ * (size of page table entry)
+\item 2-level paging: 2-level page table, first level page table points to second level page table, second level page table points to frame
+\item Only allocate page table entries for pages that are in memory
+\item Advantage: Less memory usage, no need to allocate page table for all pages \includegraphics[width=\columnwidth]{2-level paging.png}
+\item Inverted page table: Maps physical frames to $\langle$pid, page number$\rangle$, only one page table for all processes, one table for all processes but need to search for page table entry, pid + page number is unique but not page number only
 \end{itemize}
 
-\section{Establishing HTTP Session}
-
-\subsection{Certificates}
+\subsection{Page Replacement Algorithms}
 \begin{itemize}
-	\item Certificate binds an entity to some public key (Identity, public key, validity period)
-	\item Certificate Authority (CA) is a trusted third party that issues digital certificates
-	\item CA signs the certificate with its private key
-	\item CA's public key is distributed to all users
-	\item Self-signed certificate: CA is the entity itself
-	\item Domain Validated certificate: Least stringent validation, only verifies if applicant owns the domain
-	\item Extended Validation certificate: More stringent validation, Includes organization details, registration number and jurisdiction etc
+\item Dirty page: modified -> need to write back to disk
+\item $T_{access} = (1 - p) \cdot T_{mem} + p \cdot (T_{page\_fault})$
+\item FIFO: First in first out, replace oldest page, time is not updated when referenced again, more frames lead to more page faults (Belady's anomaly), does not exploit temporal locality
+\item LRU: Least recently used, replace page not used for longest time, does not suffer from Belady's anomaly, need to maintain a counter/stack (able to remove entries anywhere) to track "last access time", expensive to implement, strictly increasing can lead to overflow for counter
+\item Second chance: FIFO with reference bit, if reference bit is 1, give second chance, if 0, replace page
+\item Optimal: Replace page not used for longest time in future
 \end{itemize}
 
-\subsubsection{MITM due to Rogue CA}
-\includegraphics[width=\columnwidth]{Rogue CA.png}
-
-\subsection{Countermeasures}
+\subsection{Frame Allocation}
 \begin{itemize}
-	\item Certificate Revocation: To invalidate certificates (OCSP, CRL)
-	\item Short-lived certificate: No need to revoke
-	\item Certificate Log: Public, verifiable, and append-only log of certificates
+\item Global replacement: All frames are shared, allow self-adjustment between processes but badly behaved process can take all frames, thrashing limited to one process but it can hog the I/O and degrade performance of other processes
+\item Local replacement: Each process has fixed number of frames, no self-adjustment, can lead to underutilization of memory, thrashing process "steals" oage from other processes leading to cascading thrashing
+\item Working set model: W(t, $\Delta$) = set of pages used in the last $\Delta$ time units, $\Delta$ = working set window, $t$ = time of reference
 \end{itemize}
 
-\section{Security Principle}
-confidentiality, integrity, availability
+\section{File Management}
+Citeria: Self-contained, persistent, efficient
+\subsection{File System}
 \begin{itemize}
-	\item Confidentiality: Only authorized parties can access the data
-	\item Integrity: Data is not modified by unauthorized parties
-	\item Availability: Authorized parties can access the data when needed
+\item Store data + metadata
+\item ASCII files: Can be displayed or printed, e.g. text file, source code
+\item Binary files: Have a predefined internal structure that can be processed by a specific program, e.g. executable, Java class, pdf, png, mp3
+\item File operations as system calls: Create, open, close, read, write, delete, seek
+\item Per-process open file table (in pcb) -> system-wide open file table -> disk
 \end{itemize}
 
-\subsection{Confidentiality}
+\subsection{Directory Structure}
 \begin{itemize}
-	\item Symmetric Encryption scheme: Same key for encryption and decryption
-	\item Substitution and Permutation: Not secure - Brute force, CTO, KPA
-	\item One-time Pad: Theoretical, secure under certain conditions
-	\item Stream cipher: Not secure if key is reused, needs IV 
-	\item DES (not secure), AES (secure)
-	\item MITM on DES: Ecrypt from one side, decrypt from the other side
-	\item Padding Oracle Attack: Mask = New pad xor old pad, actual = new pad xor mask \includegraphics[width=\columnwidth]{Padding Oracle.png}
-	\item Asymetric Encryption scheme: Different keys for encryption and decryption
-	\item RSA: Integer factorization problem, multiplying two large primes to generate n is easy but factoring n is hard
-	\item $n = pq$, $\phi = (p-1)(q-1)$, $e$ = public exponent, $d$ = private exponent such that $\gcd(e, \phi) = 1$ and $ed \bmod \phi = 1$
-	\item $c = m^e \bmod n$, $m = c^d \bmod n$
-	\item RSA is significantly slower than AES
-	\item Bell-LaPadula Model: No read up, no write down
+\item Single-level: All files in one directory, easy to implement, no hierarchy, no grouping
+\item Tree-structure: Hierarchical, easy to implement, easy to navigate, easy to group
+\item DAG: One copy of actual content, hard link (files only, deletion problems), symbolic link (directory or file, special link file containing path name of file, no deletion problems but larger overhead)
+\item Symbolic link in unix is allowed to link to directory creating a general graph
 \end{itemize}
 
-\subsection{Integrity}
+\subsection{Disk organization}
+\includegraphics[width=\columnwidth]{General Disk Organization.png}
 \begin{itemize}
-	\item Hash: No authentication
-	\item MAC: Authentication and integrity, keyed, symmetric 
-	\item Signature: Authentication and integrity, asymmetric, non-repudiation
-	\item Birthday attack: Find collision after $1.17 \times 2^{n/2}$ hashes
-	\item Collision resistance: No 2 inputs produce the same hash
-	\item Pre-image resistance: Cannot get the input from the hash
-	\item Second pre-image resistance: Given an input, cannot find another input that produces the same hash
-	\item Biba Model: No write up, no read down
+	\item Must keep track of the logical blocks, allow efficient access, utilize disk space effectively
+	\item Contiguous allocation: Simple, fast, no fragmentation, but need to know size of file in advance, external fragmentation (name, start, length)
+	\item Linked allocation: No external fragmentation, but random access is very slow, part of disk block is used for pointer, less reliable (name, start, end)
+	\item Linked list 2.0 (FAT): FAT is in memory at all times, simple yet efficient, FAT keeps track of the links between blocks, fast random access as traversal is done in memory but FAT can be huge and consumes valuable memory
+	\item Indexed allocation: Each file has an index block (block[N] == N block address), lesser memory overhead, fast direct access but limited maximum file size and index block overhead (name, index block)
 \end{itemize}
 
-\subsection{Authenticated Key Exchange}
+\subsection{Free Space Management}
 \begin{itemize}
-	\item Station to Station Protocol: Deffie Hellman key exchange protocol, not secure against MITM, forward secrecy \includegraphics[width=\columnwidth]{STS.png}
-	\item MITM attack: Attacker intercepts the public keys and sends his own public key to both parties
-	\item PKC-based Key Exchange: No forward secrecy \includegraphics[width=\columnwidth]{PKC key exchange.png}
-	\item Perfect forward secrecy: Even if the private key is compromised, past sessions are still secure 
+	\item Located in partition details section
+	\item Bitmap: Each bit represents a block, 1 = free, 0 = allocated, easy to find free blocks, but slow and need to keep in memory
+	\item Linked list: Each block has a pointer to the next free block, easy to locate free block and only first pointer is needed in memory but high overhead
 \end{itemize}
 
-\subsection{Authenticated Encryption}
+\subsection{Implementing Directories}
 \begin{itemize}
-	\item Encrypt-then-MAC: Encrypt the message first, then MAC it, secure and can verify MAC before decrypting
-	\item MAC-then-encrypt: MAC the message first, then encrypt it, not secure, no ciphertext integrity
-	\item Encrypt-and-MAC: Encrypt and MAC at the same time, not secure, no ciphertext integrity
-	\item SSL/TLS protects data in transport layer
-	\item IPsec protects data in network layer
-	\item WPA2 protects data over Wi-Fi between link and physical layer
-	\item VPN tunnel at layer 3 (IP layer) to further improve security, hides everything but src mac and dest mac
+	\item Linear list: Each entry represents a file, slow linear search, solved by caching (name, start, length)
+	\item Hash table: Each directory contains a hash table, fast lookup, but limited size and depends on good hash function
+	\item File information: File name and other metadata, disk blocks information
 \end{itemize}
 
-\section{Passwords}
+\subsection{File Operations}
 \begin{itemize}
-	\item Bootstrapping: Establishing common password 
-	\item Entropy: $H = \text{Password Length} \times \log_2(\text{Symbol Set Size})$
-	\item 2FA: Something you know, something you have, something you are. Different from multi-step verification
-	\item Attack on Password reset: If reset link is constructed by taking the domain name from the host header of http request without validation, attacler post request to host and gets victim's otp
-	\item Online attack (rate limit) vs Offline attack (Add salt and hash)
+	\item Create: Locate parent directory, check for duplicates, find free disk blocks, adds an entry
+	\item Open: Search system-wide table for existing file entry, creates an entry in process table to point to this entry and return this pointer. If entry does not exist, locate the file and load the file information into a new entry in the system-wide table.
 \end{itemize}
 
-\section{Cookies}
-Choice of token should include mac computed using server secret key 
-Same origin matches protocol, hostname and port number. Same site matches protocol and last part of hostname only (String comparison www. matters)
-
-\subsection{Properties}
+\section{File System Case Studies}
+\subsection{Microsoft FAT File System}
+\includegraphics[width=\columnwidth]{Microsoft FAT.png}
 \begin{itemize}
-	\item Domain: Domain that can access the cookie
-	\item Path: Path that can access the cookie
-	\item Secure: Only sent over encrypted HTTPS
-	\item HttpOnly: Not accessible via JavaScript
-	\item SameSite (Strict or lax): Prevent CSRF attacks
-	\item Expiration date: When the cookie expires
-\end {itemize}
-
-\subsection{CSRF}
-\begin{itemize}
-	\item Victim has logged into the site and has a valid session cookie
-	\item Victim clicks a malicious link to attacker's site
-	\item Malicious site issue a stealthy request to the target site
+	\item FAT: 1 entry per data block (Free, Block number, EOF, BAD)
+	\item Directory is a special type of file with root directory in a special location
+	\item Directory entry in a Disk Data Block (File or subdirectory): Name + Extension (8 + 3), Creation Time and Date, First Disk Block Index
+	\item First block (Directory entry) $\rightarrow$ Next (FAT) $\rightarrow$ EOF (FAT)
+	\item Larger cluster size = larger usable partition but larger internal fragmentation
+	\item Long file name can use multiple directory entries
 \end{itemize}
 
-\subsection{Countermeasures}
+\subsection{Extended-2 File System Linnux}
+\includegraphics[width=\columnwidth]{Ext2 FS.png}
 \begin{itemize}
-	\item SameSite cookie: Prevents CSRF attacks by not sending cookies with cross-site requests
-	\item CSRF token: Unique token for each request, sent as a hidden field in the form
-	\item Referer header: Check if the request is coming from the same site
+	\item Disk space is split into blocks and then grouped into block groups
+	\item Each file/directory is described by I-node which contains file metadata, data block addresses
+	\item Superblocks: Describes the whole file system, total I-node number, I-node per group, Total disk blocks ...
+	\item Group Descriptor: Describes the block group, number of free blocks, number of free I-nodes, location of the bitmaps, duplicated in each block group
+	\item Block bitmap: Track usage status of blocks of this block group
+	\item I-node bitmap: Track usage status of I-nodes of this block group
+	\item I-node Table: Array of I-nodes for only this block group
+	\item I-node: 15 Disk block pointers, 12 direct pointers, 1 single indirect pointer, 1 double indirect pointer, 1 triple indirect pointer
+	\item Data block of directory stores linked list of directory entries within this directory
+	\item Directory entry: File name, I-node number, size, length of name, type \includegraphics[width=\columnwidth]{Ext2 Inode.png}
+	\item Hard link points directly to the same I-node, I-node stores reference counter
+	\item Symbolic link: Special file containing the path name of the file, no reference counter
 \end{itemize}
-
-\subsection{XSS}
-\begin{itemize}
-	\item Reflected XSS: Attacker injects malicious script into the URL, victim clicks the link and the script is executed
-	\item Stored XSS: Attacker injects malicious script into the website, victim visits the website and the script is executed
-	\item Attacker tricks user to click on malicious link, which contains the target website and a malicious script
-	\item Server constructs a response html that contains the script and browser then runs the script
-\end{itemize}
-
-\subsection{Countermeasures}
-\begin{itemize}
-	\item Input validation: Validate all user inputs
-	\item HttpOnly cookie: Prevents JavaScript from accessing the cookie
-\end{itemize}
-
-\subsection{SQL Injection}
-\begin{itemize}
-	\item Attacker injects malicious SQL code into the input field
-	\item Server constructs a SQL query that contains the malicious code
-	\item Attacker can manipulate the database
-	\item Example: Attacker enters "bob' OR 1=1; --" in the input field
-	\item Server constructs a SQL query that looks like this: "SELECT * FROM User WHERE name = ' " + userinput1 + " ' AND password = ' " + userinput2 + " '";
-	\item The query returns all users in the database
-\end{itemize}
-
-\subsection{Countermeasures}
-Parameterized queries: Use prepared statements to prevent SQL injection
-
-\section{Access Control}
-
-\subsection{Exploit software vulnerabilities}
-\begin{itemize}
-	\item Stack overflow: Attacker injects malicious code into the stack (Carnaries, memory randomization)
-	\item Integer overflow: Leads to unintended behaviour
-	\item Format string attack: Attacker injects malicious format string into the input field
-	\item Unsafe functions such as gets, scanf, sprintf
-\end{itemize}
-
-\subsection{Time of Check to Time of Use}
-Attacker can exploit the time gap between checking the access control and using the resource by deleting the original file and creating a link with the same name
-
-\subsection{Countermeasures}
-\begin{itemize}
-	\item Avoid separate system calls for checking and using the resource
-	\item Set effective UID to the appropriate user
-\end{itemize}
-
 
 \end{multicols*}
 \end{document}
