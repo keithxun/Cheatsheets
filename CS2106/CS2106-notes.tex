@@ -125,6 +125,29 @@
 \end{center}
 AY24/25 Sem 2, github.com/keithxun
 
+\section{Threads}
+\begin{itemize}
+	\item Less resources compared to processes
+	\item User thread: Thread management done by user-level library, no kernel support, cannot exploit multiple CPUs, one thread will block other threads
+	\item Kernel thread: Thread management done by kernel, kernel support, multiple thread from same process can run simultaneously, more resource intensive and less flexible
+	\item Hybrid: User thread can bind to a kernel thread 
+\end{itemize}
+
+\section{Inter Process Communication}
+\begin{itemize}
+	\item Shared memory: Fast and easy to use but synchronization is difficult, need to use semaphores or mutex
+	\item Message passing: Messages stored in kernel memory space, can be direct (name the other party) or indirect(sends to mailbpx/port), can be blocking or non-blocking, can be synchronous or asynchronous, portable, easy to synchronize but inefficient
+	\item Unix Pipes: Function as circular byte buffer, writers wait when buffer is full etc, pipefd[0] for reading, pipefd[1] for writing, int pipe(int pipefd[2]) to create  
+\end{itemize}
+
+\section{Synchronization}
+Mutual exclusion (prevent other process), progress (allow process if none in use), bounded waiting (after request to enter, upperbound of waiting time exists), independence (process not executing should never block others)
+\begin{itemize}
+	\item Peterson's algorithm: 2 processes, 1 flag for each process, 1 turn variable, busy waiting \includegraphics[width=\columnwidth]{Peterson algo.png}
+	\item Repeatedly test while-loop instead of going into blocked state
+	\item Semaphore: wait decrement and block if 0, signal increment and wake up waiting process, deadlock possible if used incorrectly (1: Wait p, wait q, 2: wait q, wait p)
+	\item Dining philosophers: (Tanenbaum) Only eat when both neightbour aren't eating, when finished, put down chopsticks and signal neighbours. (Limited eater) Footman semaphore initialized to N-1 so at least one philosopher is always prevented from eating
+\end{itemize}
 
 \section{Memory Management}
 
